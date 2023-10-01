@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package prescription;
+
+message Prescription {
+    string id = 1;
+    string patient_id = 2;
+    string medication = 3;
+    // Add more fields as needed
+}
+
+service PrescriptionManagementService {
+    rpc CreatePrescription (CreatePrescriptionRequest) returns (Prescription);
+    rpc SendPrescriptionByEmail (SendPrescriptionByEmailRequest) returns (Prescription);
+}
+
+message CreatePrescriptionRequest {
+    string patient_id = 1;
+    string medication = 2;
+    // Add more fields as needed
+}
+
+message SendPrescriptionByEmailRequest {
+    string prescription_id = 1;
+    string email = 2;
+}

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package records;
+
+message Patient {
+    string id = 1;
+    string name = 2;
+    string medical_history = 3;
+    // Add more fields as needed
+}
+
+service PatientRecordsService {
+    rpc GetPatientInfo (GetPatientInfoRequest) returns (Patient);
+    rpc UpdatePatientInfo (UpdatePatientInfoRequest) returns (Patient);
+}
+
+message GetPatientInfoRequest {
+    string patient_id = 1;
+}
+
+message UpdatePatientInfoRequest {
+    string patient_id = 1;
+    string updated_medical_history = 2;
+    // Add more fields as needed
+}
