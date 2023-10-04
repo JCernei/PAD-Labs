@@ -2,10 +2,11 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 import records_pb2 as records__pb2
 
 
-class PatientRecordsServiceStub(object):
+class RecordServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -14,58 +15,124 @@ class PatientRecordsServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetPatientInfo = channel.unary_unary(
-                '/records.PatientRecordsService/GetPatientInfo',
-                request_serializer=records__pb2.GetPatientInfoRequest.SerializeToString,
-                response_deserializer=records__pb2.Patient.FromString,
+        self.CreateRecord = channel.unary_unary(
+                '/records.RecordService/CreateRecord',
+                request_serializer=records__pb2.CreateRecordRequest.SerializeToString,
+                response_deserializer=records__pb2.Record.FromString,
                 )
-        self.UpdatePatientInfo = channel.unary_unary(
-                '/records.PatientRecordsService/UpdatePatientInfo',
-                request_serializer=records__pb2.UpdatePatientInfoRequest.SerializeToString,
-                response_deserializer=records__pb2.Patient.FromString,
+        self.GetRecordInfo = channel.unary_unary(
+                '/records.RecordService/GetRecordInfo',
+                request_serializer=records__pb2.GetRecordInfoRequest.SerializeToString,
+                response_deserializer=records__pb2.Record.FromString,
+                )
+        self.UpdateRecordInfo = channel.unary_unary(
+                '/records.RecordService/UpdateRecordInfo',
+                request_serializer=records__pb2.UpdateRecordInfoRequest.SerializeToString,
+                response_deserializer=records__pb2.Record.FromString,
+                )
+        self.DeleteRecord = channel.unary_unary(
+                '/records.RecordService/DeleteRecord',
+                request_serializer=records__pb2.DeleteRecordRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.ListRecords = channel.unary_unary(
+                '/records.RecordService/ListRecords',
+                request_serializer=records__pb2.ListRecordsRequest.SerializeToString,
+                response_deserializer=records__pb2.ListRecordsResponse.FromString,
+                )
+        self.GetServiceStatus = channel.unary_unary(
+                '/records.RecordService/GetServiceStatus',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=records__pb2.ServiceStatus.FromString,
                 )
 
 
-class PatientRecordsServiceServicer(object):
+class RecordServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def GetPatientInfo(self, request, context):
+    def CreateRecord(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def UpdatePatientInfo(self, request, context):
+    def GetRecordInfo(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def UpdateRecordInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-def add_PatientRecordsServiceServicer_to_server(servicer, server):
+    def DeleteRecord(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListRecords(self, request, context):
+        """New list endpoint
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetServiceStatus(self, request, context):
+        """New status endpoint
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_RecordServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GetPatientInfo': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetPatientInfo,
-                    request_deserializer=records__pb2.GetPatientInfoRequest.FromString,
-                    response_serializer=records__pb2.Patient.SerializeToString,
+            'CreateRecord': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateRecord,
+                    request_deserializer=records__pb2.CreateRecordRequest.FromString,
+                    response_serializer=records__pb2.Record.SerializeToString,
             ),
-            'UpdatePatientInfo': grpc.unary_unary_rpc_method_handler(
-                    servicer.UpdatePatientInfo,
-                    request_deserializer=records__pb2.UpdatePatientInfoRequest.FromString,
-                    response_serializer=records__pb2.Patient.SerializeToString,
+            'GetRecordInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRecordInfo,
+                    request_deserializer=records__pb2.GetRecordInfoRequest.FromString,
+                    response_serializer=records__pb2.Record.SerializeToString,
+            ),
+            'UpdateRecordInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateRecordInfo,
+                    request_deserializer=records__pb2.UpdateRecordInfoRequest.FromString,
+                    response_serializer=records__pb2.Record.SerializeToString,
+            ),
+            'DeleteRecord': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteRecord,
+                    request_deserializer=records__pb2.DeleteRecordRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'ListRecords': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListRecords,
+                    request_deserializer=records__pb2.ListRecordsRequest.FromString,
+                    response_serializer=records__pb2.ListRecordsResponse.SerializeToString,
+            ),
+            'GetServiceStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetServiceStatus,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=records__pb2.ServiceStatus.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'records.PatientRecordsService', rpc_method_handlers)
+            'records.RecordService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class PatientRecordsService(object):
+class RecordService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def GetPatientInfo(request,
+    def CreateRecord(request,
             target,
             options=(),
             channel_credentials=None,
@@ -75,14 +142,14 @@ class PatientRecordsService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/records.PatientRecordsService/GetPatientInfo',
-            records__pb2.GetPatientInfoRequest.SerializeToString,
-            records__pb2.Patient.FromString,
+        return grpc.experimental.unary_unary(request, target, '/records.RecordService/CreateRecord',
+            records__pb2.CreateRecordRequest.SerializeToString,
+            records__pb2.Record.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def UpdatePatientInfo(request,
+    def GetRecordInfo(request,
             target,
             options=(),
             channel_credentials=None,
@@ -92,8 +159,76 @@ class PatientRecordsService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/records.PatientRecordsService/UpdatePatientInfo',
-            records__pb2.UpdatePatientInfoRequest.SerializeToString,
-            records__pb2.Patient.FromString,
+        return grpc.experimental.unary_unary(request, target, '/records.RecordService/GetRecordInfo',
+            records__pb2.GetRecordInfoRequest.SerializeToString,
+            records__pb2.Record.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def UpdateRecordInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/records.RecordService/UpdateRecordInfo',
+            records__pb2.UpdateRecordInfoRequest.SerializeToString,
+            records__pb2.Record.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DeleteRecord(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/records.RecordService/DeleteRecord',
+            records__pb2.DeleteRecordRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListRecords(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/records.RecordService/ListRecords',
+            records__pb2.ListRecordsRequest.SerializeToString,
+            records__pb2.ListRecordsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetServiceStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/records.RecordService/GetServiceStatus',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            records__pb2.ServiceStatus.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

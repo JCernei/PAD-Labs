@@ -11,21 +11,32 @@ from google.protobuf.internal import builder as _builder
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rrecords.proto\x12\x07records\"<\n\x07Patient\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x17\n\x0fmedical_history\x18\x03 \x01(\t\"+\n\x15GetPatientInfoRequest\x12\x12\n\npatient_id\x18\x01 \x01(\t\"O\n\x18UpdatePatientInfoRequest\x12\x12\n\npatient_id\x18\x01 \x01(\t\x12\x1f\n\x17updated_medical_history\x18\x02 \x01(\t2\xa5\x01\n\x15PatientRecordsService\x12\x42\n\x0eGetPatientInfo\x12\x1e.records.GetPatientInfoRequest\x1a\x10.records.Patient\x12H\n\x11UpdatePatientInfo\x12!.records.UpdatePatientInfoRequest\x1a\x10.records.Patientb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rrecords.proto\x12\x07records\x1a\x1bgoogle/protobuf/empty.proto\";\n\x06Record\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x17\n\x0fmedical_history\x18\x03 \x01(\t\"<\n\x13\x43reateRecordRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x17\n\x0fmedical_history\x18\x02 \x01(\t\")\n\x14GetRecordInfoRequest\x12\x11\n\trecord_id\x18\x01 \x01(\t\"M\n\x17UpdateRecordInfoRequest\x12\x11\n\trecord_id\x18\x01 \x01(\t\x12\x1f\n\x17updated_medical_history\x18\x02 \x01(\t\"(\n\x13\x44\x65leteRecordRequest\x12\x11\n\trecord_id\x18\x01 \x01(\t\"\x14\n\x12ListRecordsRequest\"7\n\x13ListRecordsResponse\x12 \n\x07records\x18\x01 \x03(\x0b\x32\x0f.records.Record\"#\n\rServiceStatus\x12\x12\n\nis_healthy\x18\x01 \x01(\x08\x32\xaa\x03\n\rRecordService\x12=\n\x0c\x43reateRecord\x12\x1c.records.CreateRecordRequest\x1a\x0f.records.Record\x12?\n\rGetRecordInfo\x12\x1d.records.GetRecordInfoRequest\x1a\x0f.records.Record\x12\x45\n\x10UpdateRecordInfo\x12 .records.UpdateRecordInfoRequest\x1a\x0f.records.Record\x12\x44\n\x0c\x44\x65leteRecord\x12\x1c.records.DeleteRecordRequest\x1a\x16.google.protobuf.Empty\x12H\n\x0bListRecords\x12\x1b.records.ListRecordsRequest\x1a\x1c.records.ListRecordsResponse\x12\x42\n\x10GetServiceStatus\x12\x16.google.protobuf.Empty\x1a\x16.records.ServiceStatusb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'records_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  _globals['_PATIENT']._serialized_start=26
-  _globals['_PATIENT']._serialized_end=86
-  _globals['_GETPATIENTINFOREQUEST']._serialized_start=88
-  _globals['_GETPATIENTINFOREQUEST']._serialized_end=131
-  _globals['_UPDATEPATIENTINFOREQUEST']._serialized_start=133
-  _globals['_UPDATEPATIENTINFOREQUEST']._serialized_end=212
-  _globals['_PATIENTRECORDSSERVICE']._serialized_start=215
-  _globals['_PATIENTRECORDSSERVICE']._serialized_end=380
+  _globals['_RECORD']._serialized_start=55
+  _globals['_RECORD']._serialized_end=114
+  _globals['_CREATERECORDREQUEST']._serialized_start=116
+  _globals['_CREATERECORDREQUEST']._serialized_end=176
+  _globals['_GETRECORDINFOREQUEST']._serialized_start=178
+  _globals['_GETRECORDINFOREQUEST']._serialized_end=219
+  _globals['_UPDATERECORDINFOREQUEST']._serialized_start=221
+  _globals['_UPDATERECORDINFOREQUEST']._serialized_end=298
+  _globals['_DELETERECORDREQUEST']._serialized_start=300
+  _globals['_DELETERECORDREQUEST']._serialized_end=340
+  _globals['_LISTRECORDSREQUEST']._serialized_start=342
+  _globals['_LISTRECORDSREQUEST']._serialized_end=362
+  _globals['_LISTRECORDSRESPONSE']._serialized_start=364
+  _globals['_LISTRECORDSRESPONSE']._serialized_end=419
+  _globals['_SERVICESTATUS']._serialized_start=421
+  _globals['_SERVICESTATUS']._serialized_end=456
+  _globals['_RECORDSERVICE']._serialized_start=459
+  _globals['_RECORDSERVICE']._serialized_end=885
 # @@protoc_insertion_point(module_scope)

@@ -11,21 +11,30 @@ from google.protobuf.internal import builder as _builder
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x12prescription.proto\x12\x0cprescription\"B\n\x0cPrescription\x12\n\n\x02id\x18\x01 \x01(\t\x12\x12\n\npatient_id\x18\x02 \x01(\t\x12\x12\n\nmedication\x18\x03 \x01(\t\"C\n\x19\x43reatePrescriptionRequest\x12\x12\n\npatient_id\x18\x01 \x01(\t\x12\x12\n\nmedication\x18\x02 \x01(\t\"H\n\x1eSendPrescriptionByEmailRequest\x12\x17\n\x0fprescription_id\x18\x01 \x01(\t\x12\r\n\x05\x65mail\x18\x02 \x01(\t2\xdf\x01\n\x1dPrescriptionManagementService\x12Y\n\x12\x43reatePrescription\x12\'.prescription.CreatePrescriptionRequest\x1a\x1a.prescription.Prescription\x12\x63\n\x17SendPrescriptionByEmail\x12,.prescription.SendPrescriptionByEmailRequest\x1a\x1a.prescription.Prescriptionb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x12prescription.proto\x12\x0cprescription\x1a\x1bgoogle/protobuf/empty.proto\".\n\x0cPrescription\x12\n\n\x02id\x18\x01 \x01(\t\x12\x12\n\nmedication\x18\x02 \x01(\t\"H\n\x19\x43reatePrescriptionRequest\x12\x17\n\x0fprescription_id\x18\x01 \x01(\t\x12\x12\n\nmedication\x18\x02 \x01(\t\"1\n\x16GetPrescriptionRequest\x12\x17\n\x0fprescription_id\x18\x01 \x01(\t\"P\n\x19UpdatePrescriptionRequest\x12\x17\n\x0fprescription_id\x18\x01 \x01(\t\x12\x1a\n\x12updated_medication\x18\x02 \x01(\t\"4\n\x19\x44\x65letePrescriptionRequest\x12\x17\n\x0fprescription_id\x18\x01 \x01(\t\"#\n\rServiceStatus\x12\x12\n\nis_healthy\x18\x01 \x01(\x08\"H\n\x1eSendPrescriptionByEmailRequest\x12\x17\n\x0fprescription_id\x18\x01 \x01(\t\x12\r\n\x05\x65mail\x18\x02 \x01(\t2\xa1\x04\n\x13PrescriptionService\x12Y\n\x12\x43reatePrescription\x12\'.prescription.CreatePrescriptionRequest\x1a\x1a.prescription.Prescription\x12S\n\x0fGetPrescription\x12$.prescription.GetPrescriptionRequest\x1a\x1a.prescription.Prescription\x12Y\n\x12UpdatePrescription\x12\'.prescription.UpdatePrescriptionRequest\x1a\x1a.prescription.Prescription\x12U\n\x12\x44\x65letePrescription\x12\'.prescription.DeletePrescriptionRequest\x1a\x16.google.protobuf.Empty\x12_\n\x17SendPrescriptionByEmail\x12,.prescription.SendPrescriptionByEmailRequest\x1a\x16.google.protobuf.Empty\x12G\n\x10GetServiceStatus\x12\x16.google.protobuf.Empty\x1a\x1b.prescription.ServiceStatusb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'prescription_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  _globals['_PRESCRIPTION']._serialized_start=36
-  _globals['_PRESCRIPTION']._serialized_end=102
-  _globals['_CREATEPRESCRIPTIONREQUEST']._serialized_start=104
-  _globals['_CREATEPRESCRIPTIONREQUEST']._serialized_end=171
-  _globals['_SENDPRESCRIPTIONBYEMAILREQUEST']._serialized_start=173
-  _globals['_SENDPRESCRIPTIONBYEMAILREQUEST']._serialized_end=245
-  _globals['_PRESCRIPTIONMANAGEMENTSERVICE']._serialized_start=248
-  _globals['_PRESCRIPTIONMANAGEMENTSERVICE']._serialized_end=471
+  _globals['_PRESCRIPTION']._serialized_start=65
+  _globals['_PRESCRIPTION']._serialized_end=111
+  _globals['_CREATEPRESCRIPTIONREQUEST']._serialized_start=113
+  _globals['_CREATEPRESCRIPTIONREQUEST']._serialized_end=185
+  _globals['_GETPRESCRIPTIONREQUEST']._serialized_start=187
+  _globals['_GETPRESCRIPTIONREQUEST']._serialized_end=236
+  _globals['_UPDATEPRESCRIPTIONREQUEST']._serialized_start=238
+  _globals['_UPDATEPRESCRIPTIONREQUEST']._serialized_end=318
+  _globals['_DELETEPRESCRIPTIONREQUEST']._serialized_start=320
+  _globals['_DELETEPRESCRIPTIONREQUEST']._serialized_end=372
+  _globals['_SERVICESTATUS']._serialized_start=374
+  _globals['_SERVICESTATUS']._serialized_end=409
+  _globals['_SENDPRESCRIPTIONBYEMAILREQUEST']._serialized_start=411
+  _globals['_SENDPRESCRIPTIONBYEMAILREQUEST']._serialized_end=483
+  _globals['_PRESCRIPTIONSERVICE']._serialized_start=486
+  _globals['_PRESCRIPTIONSERVICE']._serialized_end=1031
 # @@protoc_insertion_point(module_scope)
