@@ -1,28 +1,41 @@
-const path = require('path');
-const grpc = require('@grpc/grpc-js');
-const { loadSync } = require('@grpc/proto-loader');
-const express = require('express');
-const bodyParser = require('body-parser');
-const NodeCache = require('node-cache');
-
-const cache = new NodeCache({ stdTTL: 300 }); // Cache data for 5 minutes
+import pLimit from 'p-limit';
+import path from 'path';
+import grpc from '@grpc/grpc-js';
+import { loadSync } from '@grpc/proto-loader';
+import express from 'express';
+import bodyParser from 'body-parser';
+import NodeCache from 'node-cache';
 
 const app = express();
 app.use(bodyParser.json());
 
+const __filename = new URL(import.meta.url).pathname;
+const protoDir = path.dirname(__filename);
+
 // Load the proto files
 const packageDefinition = loadSync([
-  path.resolve(__dirname, '../protobufs/records.proto'),
-  path.resolve(__dirname, '../protobufs/prescription.proto'),
-], {keepCase: true});
+  path.resolve(protoDir, '../protobufs/records.proto'),
+  path.resolve(protoDir, '../protobufs/prescription.proto'),
+], { keepCase: true });
 
 // Create gRPC clients for internal communication
-var services = grpc.loadPackageDefinition(packageDefinition);
-const recordsService = services.records;
-const prescriptionService = services.prescription;
+const services = grpc.loadPackageDefinition(packageDefinition);
+const { RecordService } = services.records;
+const { PrescriptionService } = services.prescription;
 
-// Define a function to wrap gRPC calls with a timeout
-function wrapWithTimeout(client, method, request, timeoutMilliseconds) {
+function createGRPCClient(service, host, credentials) {
+  return new service(host, credentials);
+}
+
+const limit = pLimit(7); // Limit concurrency to 5 tasks
+const cache = new NodeCache({ stdTTL: 300 }); // Cache data for 5 minutes
+
+function invalidateCache(key, id) {
+  const cacheKey = `${key}:${id}`;
+  cache.del(cacheKey);
+}
+
+function grpcRequestWithTimeout(client, method, request, timeoutMilliseconds) {
   return new Promise((resolve, reject) => {
     const deadline = new Date(Date.now() + timeoutMilliseconds);
 
@@ -38,169 +51,181 @@ function wrapWithTimeout(client, method, request, timeoutMilliseconds) {
   });
 }
 
-function wrapWithTimeoutAndCache(client, method, request, timeoutMilliseconds, cacheKey) {
+function getFromCacheOrFetch(cache, cacheKey, fetchFunction) {
   const cachedResponse = cache.get(cacheKey);
   if (cachedResponse) {
     console.log(`Cache hit for ${cacheKey}`);
     return Promise.resolve(cachedResponse);
   }
 
-  return new Promise((resolve, reject) => {
-    const deadline = new Date(Date.now() + timeoutMilliseconds);
-
-    client[method](request, { deadline }, (error, response) => {
-      if (error) {
-        console.error(error.details);
-        reject(error.details);
-      } else {
-        console.log(`Received gRPC response for ${method}: ${JSON.stringify(response)}`);
-        cache.set(cacheKey, response);
-        resolve(response);
-      }
-    });
+  return fetchFunction().then((response) => {
+    cache.set(cacheKey, response);
+    return response;
   });
+}
+
+function handleRequestError(res, error) {
+  console.error(`Request failed: ${error}`);
+  res.status(500).json({ error: 'Internal Server Error' });
 }
 
 // Get a record by ID
 app.get('/records/:record_id', (req, res) => {
   const { record_id } = req.params;
   const request = { record_id };
-  const client = new recordsService.RecordService('localhost:50051', grpc.credentials.createInsecure());
-  const timeoutMilliseconds = 100; // 5 seconds
+  const client = createGRPCClient(RecordService, 'localhost:50051', grpc.credentials.createInsecure());
+  const timeoutMilliseconds = 1000; // 5 seconds
   const cacheKey = `getRecordInfo:${record_id}`;
 
-  wrapWithTimeoutAndCache(client, 'GetRecordInfo', request, timeoutMilliseconds, cacheKey)
+  console.log(`Active tasks: ${limit.activeCount}`);
+  console.log(`Pending tasks: ${limit.pendingCount}`);
+
+  limit(() => getFromCacheOrFetch(cache, cacheKey, () =>
+    grpcRequestWithTimeout(client, 'GetRecordInfo', request, timeoutMilliseconds)
+  ))
     .then((response) => res.json(response))
-    .catch((error) => {
-      console.error(`Request for getRecordInfo failed: ${error}`);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
+    .catch((error) => handleRequestError(res, error));
 });
 
 // List records
 app.get('/records', (req, res) => {
-  const client = new recordsService.RecordService('localhost:50051', grpc.credentials.createInsecure());
+  const client = createGRPCClient(RecordService, 'localhost:50051', grpc.credentials.createInsecure());
   const timeoutMilliseconds = 5000; // 5 seconds
-  // const cacheKey = '';
 
-  wrapWithTimeoutAndCache(client, 'ListRecords', {}, timeoutMilliseconds, cacheKey)
+  console.log(`Active tasks: ${limit.activeCount}`);
+  console.log(`Pending tasks: ${limit.pendingCount}`);
+
+  limit(() => getFromCacheOrFetch(cache, 'listRecords', () =>
+    grpcRequestWithTimeout(client, 'ListRecords', {}, timeoutMilliseconds)
+  ))
     .then((response) => res.json(response))
-    .catch((error) => {
-      console.error(`Request for listRecords failed: ${error}`);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
+    .catch((error) => handleRequestError(res, error));
 });
 
 // Create a new record
 app.post('/records', (req, res) => {
   const { name, medical_history } = req.body;
-  const client = new recordsService.RecordService('localhost:50051', grpc.credentials.createInsecure());
+  const client = createGRPCClient(RecordService, 'localhost:50051', grpc.credentials.createInsecure());
   const timeoutMilliseconds = 5000; // 5 seconds
-  // const cacheKey = 'createRecord';
 
-  wrapWithTimeout(client, 'CreateRecord', { name, medical_history }, timeoutMilliseconds)
-    .then((response) => res.json(response))
-    .catch((error) => {
-      console.error(`Request for createRecord failed: ${error}`);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
+  console.log(`Active tasks: ${limit.activeCount}`);
+  console.log(`Pending tasks: ${limit.pendingCount}`);
+
+  limit(() => grpcRequestWithTimeout(client, 'CreateRecord', { name, medical_history }, timeoutMilliseconds))
+  .then((response) => {
+    // Invalidate the cache for listRecords
+    cache.del('listRecords');
+    res.json(response);
+  })
+    .catch((error) => handleRequestError(res, error));
 });
 
 // Update a record
 app.put('/records/:record_id', (req, res) => {
   const { record_id } = req.params;
   const { updated_medical_history } = req.body;
-  const client = new recordsService.RecordService('localhost:50051', grpc.credentials.createInsecure());
+  const request = { record_id, updated_medical_history };
+  const client = createGRPCClient(RecordService, 'localhost:50051', grpc.credentials.createInsecure());
   const timeoutMilliseconds = 5000; // 5 seconds
-  // const cacheKey = `updateRecordInfo:${record_id}`;
+  const cacheKey = `updateRecordInfo:${record_id}`;
 
-  wrapWithTimeout(client, 'UpdateRecordInfo', { record_id, updated_medical_history }, timeoutMilliseconds)
-    .then((response) => res.json(response))
-    .catch((error) => {
-      console.error(`Request for updateRecordInfo failed: ${error}`);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
+  console.log(`Active tasks: ${limit.activeCount}`);
+  console.log(`Pending tasks: ${limit.pendingCount}`);
+
+  limit(() => grpcRequestWithTimeout(client, 'UpdateRecordInfo', request, timeoutMilliseconds))
+  .then((response) => {
+    invalidateCache('getRecordInfo', record_id);
+    res.json(response);
+  })
+    .catch((error) => handleRequestError(res, error));
 });
 
 // Delete a record
 app.delete('/records/:record_id', (req, res) => {
   const { record_id } = req.params;
-  const client = new recordsService.RecordService('localhost:50051', grpc.credentials.createInsecure());
+  const request = { record_id };
+  const client = createGRPCClient(RecordService, 'localhost:50051', grpc.credentials.createInsecure());
   const timeoutMilliseconds = 5000; // 5 seconds
-  // const cacheKey = `deleteRecord:${record_id}`;
+  const cacheKey = `deleteRecord:${record_id}`;
 
-  wrapWithTimeout(client, 'DeleteRecord', { record_id }, timeoutMilliseconds)
+  console.log(`Active tasks: ${limit.activeCount}`);
+  console.log(`Pending tasks: ${limit.pendingCount}`);
+
+  limit(() => grpcRequestWithTimeout(client, 'DeleteRecord', request, timeoutMilliseconds))
     .then(() => {
       console.log(`Successfully deleted record with ID: ${record_id}`);
+      invalidateCache('getRecordInfo', record_id);
       res.json(`Successfully deleted record with ID: ${record_id}`);
     })
-    .catch((error) => {
-      console.error(`Request for deleteRecord failed: ${error}`);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
+    .catch((error) => handleRequestError(res, error));
 });
 
 app.post('/prescriptions', (req, res) => {
   const { medication } = req.body;
   const request = { medication };
-  const client = new prescriptionService.PrescriptionService('localhost:50052', grpc.credentials.createInsecure());
+  const client = createGRPCClient(PrescriptionService, 'localhost:50052', grpc.credentials.createInsecure());
   const timeoutMilliseconds = 5000; // 5 seconds
 
-  wrapWithTimeout(client, 'CreatePrescription', request, timeoutMilliseconds)
-  .then((response) => res.json(response))
-  .catch((error) => {
-    console.error(`Request for createPrescription failed: ${error}`);
-    res.status(500).json({ error: 'Internal Server Error' });
-  });
+  console.log(`Active tasks: ${limit.activeCount}`);
+  console.log(`Pending tasks: ${limit.pendingCount}`);
+
+  limit(() => grpcRequestWithTimeout(client, 'CreatePrescription', request, timeoutMilliseconds))
+    .then((response) => res.json(response))
+    .catch((error) => handleRequestError(res, error));
 });
 
 app.get('/prescriptions/:prescription_id', (req, res) => {
   const { prescription_id } = req.params;
   const request = { prescription_id };
-  const client = new prescriptionService.PrescriptionService('localhost:50052', grpc.credentials.createInsecure());
+  const client = createGRPCClient(PrescriptionService, 'localhost:50052', grpc.credentials.createInsecure());
   const timeoutMilliseconds = 100; // 5 seconds
   const cacheKey = `getPrescription:${prescription_id}`;
 
-  wrapWithTimeoutAndCache(client, 'GetPrescription', request, timeoutMilliseconds, cacheKey)
+  console.log(`Active tasks: ${limit.activeCount}`);
+  console.log(`Pending tasks: ${limit.pendingCount}`);
+
+  limit(() => getFromCacheOrFetch(cache, cacheKey, () =>
+    grpcRequestWithTimeout(client, 'GetPrescription', request, timeoutMilliseconds)
+  ))
     .then((response) => res.json(response))
-    .catch((error) => {
-      console.error(`Request for getPrescription failed: ${error}`);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
+    .catch((error) => handleRequestError(res, error));
 });
 
 app.put('/prescriptions/:prescription_id', (req, res) => {
   const { prescription_id } = req.params;
   const { updated_medication } = req.body;
   const request = { prescription_id, updated_medication };
-  const client = new prescriptionService.PrescriptionService('localhost:50052', grpc.credentials.createInsecure());
+  const client = createGRPCClient(PrescriptionService, 'localhost:50052', grpc.credentials.createInsecure());
   const timeoutMilliseconds = 5000; // 5 seconds
-  
-  wrapWithTimeout(client, 'UpdatePrescription', request, timeoutMilliseconds)
-    .then((response) => res.json(response))
-    .catch((error) => {
-      console.error(`Request for updatePrescription failed: ${error}`);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
+
+  console.log(`Active tasks: ${limit.activeCount}`);
+  console.log(`Pending tasks: ${limit.pendingCount}`);
+
+  limit(() => grpcRequestWithTimeout(client, 'UpdatePrescription', request, timeoutMilliseconds))
+  .then((response) => {
+    invalidateCache('getPrescription', prescription_id);
+    res.json(response);
+  })
+    .catch((error) => handleRequestError(res, error));
 });
 
 app.delete('/prescriptions/:prescription_id', (req, res) => {
   const { prescription_id } = req.params;
   const request = { prescription_id };
-  const client = new prescriptionService.PrescriptionService('localhost:50052', grpc.credentials.createInsecure());
+  const client = createGRPCClient(PrescriptionService, 'localhost:50052', grpc.credentials.createInsecure());
   const timeoutMilliseconds = 5000; // 5 seconds
 
-  wrapWithTimeout(client, 'DeletePrescription', request, timeoutMilliseconds)
-    .then(() => {
-      console.log(`Successfully deleted record with ID: ${record_id}`);
-      res.json(`Successfully deleted prescription with ID: ${record_id}`);
-    })
-    .catch((error) => {
-      console.error(`Request for deletePrescription failed: ${error}`);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
-});
+  console.log(`Active tasks: ${limit.activeCount}`);
+  console.log(`Pending tasks: ${limit.pendingCount}`);
 
+  limit(() => grpcRequestWithTimeout(client, 'DeletePrescription', request, timeoutMilliseconds))
+    .then(() => {
+      console.log(`Successfully deleted prescription with ID: ${prescription_id}`);
+      invalidateCache('getPrescription', prescription_id);
+      res.json(`Successfully deleted prescription with ID: ${prescription_id}`);
+    })
+    .catch((error) => handleRequestError(res, error));
+});
 
 // Start the HTTP server for the client
 const gatewayPort = 8080;

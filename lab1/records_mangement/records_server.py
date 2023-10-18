@@ -1,9 +1,13 @@
 import grpc
 import records_pb2
 import records_pb2_grpc
+from registration_pb2 import ServiceRegistration, DeregisterServiceRequest, SendServiceStatusRequest, Heartbeat
+from registration_pb2_grpc import RegistrationServiceStub
 import sqlite3
 from concurrent import futures
 from google.protobuf import empty_pb2
+import threading
+import time
 
 
 DATABASE = "records.db"
@@ -19,6 +23,61 @@ cursor.execute('''
     ''')
 connection.commit()
 cursor.close
+
+
+def register_service():
+    with grpc.insecure_channel('localhost:50053') as channel:
+        stub = RegistrationServiceStub(channel)
+        registration_info = ServiceRegistration(
+            name="record-service",
+            host="0.0.0.0",
+            port=50051  # The port where your Python service listens
+        )
+        stub.RegisterService(registration_info)
+        print("Service registered with the Node.js gateway")
+
+def deregister_service():
+    with grpc.insecure_channel('localhost:50053') as channel:
+        stub = RegistrationServiceStub(channel)
+        deregistration_request = DeregisterServiceRequest(
+            name="record-service",
+            host="0.0.0.0",
+            port=50051  # The port where your Python service listens
+        )
+    stub.DeregisterService(deregistration_request)
+
+    return empty_pb2.Empty()
+
+def update_service_status():
+    with grpc.insecure_channel('localhost:50053') as channel:
+        stub = RegistrationServiceStub(channel)
+        status_request = SendServiceStatusRequest(
+            service_name="record-service",
+            load=75  # Modify this based on your actual status value
+        )
+        stub.UpdateServiceStatus(status_request)
+        print("Service status updated")
+
+def update_service_heartbeat():
+    with grpc.insecure_channel('localhost:50053') as channel:
+        stub = RegistrationServiceStub(channel)
+        heartbeat = Heartbeat(
+            service_name="record-service"
+        )
+        stub.UpdateServiceHeartbeat(heartbeat)
+        print("Service heartbeat updated")
+        
+def update_service_status_and_heartbeat_periodically():
+    while True:
+        try:
+            update_service_status()
+            update_service_heartbeat()
+            print("Service status and heartbeat sent")
+        except Exception as e:
+            print(f"Failed to send status and heartbeat: {e}")
+
+        # Adjust the sleep interval (in seconds) as needed
+        time.sleep(10)  # Send status and heartbeat every 60 seconds
 
 class RecordService(records_pb2_grpc.RecordServiceServicer):
     def CreateRecord(self, request, context):
@@ -130,4 +189,9 @@ def serve():
     server.wait_for_termination()
 
 if __name__ == '__main__':
+    register_service()
+    status_heartbeat_thread = threading.Thread(target=update_service_status_and_heartbeat_periodically)
+    status_heartbeat_thread.daemon = True
+    status_heartbeat_thread.start()
+
     serve()
