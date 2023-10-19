@@ -39,10 +39,15 @@ message ServiceInfo {
     int32 load = 4;
 }
 
+message ServiceDiscoveryStatus {
+    bool is_healthy = 1;
+}
+
 service RegistrationService {
     rpc RegisterService(ServiceRegistration) returns (google.protobuf.Empty);
     rpc DeregisterService(DeregisterServiceRequest) returns (google.protobuf.Empty);
     rpc UpdateServiceStatus(SendServiceStatusRequest) returns (google.protobuf.Empty);
     rpc UpdateServiceHeartbeat(Heartbeat) returns (google.protobuf.Empty);
     rpc ListRegisteredServices (google.protobuf.Empty) returns (ServicesList);
+    rpc GetServiceDiscoveryStatus (google.protobuf.Empty) returns (ServiceDiscoveryStatus);
 }

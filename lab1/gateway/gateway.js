@@ -128,6 +128,9 @@ function handleRequestError(res, error, service, taskTimeoutLimit) {
       registeredServices = registeredServices.filter((s) => s.name !== service.name);
       console.log(`Service ${service.name} removed due to too many errors.`);
     }
+    else{
+      errorCounts[service.name] = 0;
+    }
   }, 3.5 * taskTimeoutLimit);
 }
 
@@ -410,6 +413,12 @@ app.delete('/prescriptions/:prescription_id', (req, res) => {
       console.error('Failed to retrieve registered services:', error);
       res.status(500).json({ error: 'Failed to retrieve registered services' });
     });
+});
+
+// Define a status route for the gateway
+app.get('/gateway/status', (req, res) => {
+  const gatewayStatus = { status: 'OK' }; // You can customize this based on your needs.
+  res.json(gatewayStatus);
 });
 
 // Start the HTTP server for the client

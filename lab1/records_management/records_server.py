@@ -212,6 +212,10 @@ class RecordService(records_pb2_grpc.RecordServiceServicer):
         cursor.close()
         decrease_load()
         return records_pb2.ListRecordsResponse(records=records)
+    
+    def GetServiceStatus(self, request, context):
+        # increase_load()
+        return records_pb2.ServiceStatus(is_healthy=True)
 
 
 def serve(RECORDS_SERVICE_PORT):
