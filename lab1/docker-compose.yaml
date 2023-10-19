@@ -1,0 +1,49 @@
+services:
+  gateway:
+    networks:
+      - mynetwork
+    build: ./gateway/
+    command: node gateway.js
+    volumes: 
+      - './gateway/:/app/'
+      - './protobufs/:/protobufs/'
+    environment:
+      - GATEWAY_PORT=80
+      - SERVICE_DISCOVERY_URL='service-discovery.local:80'
+      - RECORDS_SERVICE_URL='records-management'
+      - PRESCRIPTION_SERVICE_URL='prescription-management'
+    ports:
+      - "8080:80"
+  service-discovery:
+    networks:
+      - mynetwork
+    build: ./gateway/
+    command: node service-discovery.js
+    hostname: servicediscovery.local
+    volumes: 
+      - './gateway/:/app/'
+      - './protobufs/:/protobufs/'
+    environment:
+      - SERVICE_DISCOVERY_PORT=80
+    depends_on:
+      - gateway
+    ports:
+    - "8081:80"
+  records-management:
+    networks:
+      - mynetwork
+    build: ./records_management/
+    command: python3 records_server.py
+    volumes: 
+      - './records_management/:/app/'
+    environment:
+      - GRPC_DNS_RESOLVER=native 
+      - RECORDS_SERVICE_PORT=80
+      - SERVICE_DISCOVERY_URL='servicediscovery.local:80/'
+    depends_on:
+      - gateway
+      - service-discovery
+    ports:
+      - "50051:80"
+networks:
+  mynetwork:

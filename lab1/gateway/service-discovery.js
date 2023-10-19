@@ -1,6 +1,11 @@
 import path from 'path';
 import grpc from '@grpc/grpc-js';
 import { loadSync } from '@grpc/proto-loader';
+import dotenv from 'dotenv';
+
+dotenv.config();
+const PORT = parseInt(process.env.SERVICE_DISCOVERY_PORT);
+
 
 const __filename = new URL(import.meta.url).pathname;
 const protoDir = path.dirname(__filename);
@@ -20,52 +25,59 @@ const CRITICAL_LOAD_THRESHOLD = 60;
 
 // Implement the service registration function
 function register(name, host, port) {
-  registeredServices[name] = { host, port };
-  console.log(`Service ${name} registered in the gateway`);
+  if(!deletedServices[`${name}:${port}`]){
+    registeredServices[`${name}:${port}`] = { host, port };
+    console.log(`Service ${name}:${port} registered in the gateway`);
+  } else {
+    reRegister(name, port);
+  }
 }
 
 // Implement the service deregistration function
-function deregister(service) {
-  console.log(registeredServices[service]);
-  delete registeredServices[service];
-  console.log(registeredServices[service]);
-  console.log(`Service ${service} deregistered from the gateway`);
+function deregister(serviceInstance) {
+  delete registeredServices[serviceInstance];
+  console.log(`Service ${serviceInstance} deregistered from the gateway`);
 }
 
 // Function to re-register deleted services upon receiving heartbeats.
-function reRegister(serviceName) {
-  if (deletedServices[serviceName]) {
-    registeredServices[serviceName] = deletedServices[serviceName];
-    delete deletedServices[serviceName];
-    console.log(`Service ${serviceName} re-registered due to received heartbeat.`);
+function reRegister(serviceName, port) {
+  if (deletedServices[`${serviceName}:${port}`]) {
+    registeredServices[`${serviceName}:${port}`] = deletedServices[`${serviceName}:${port}`];
+    delete deletedServices[`${serviceName}:${port}`];
+    console.log(`Service ${serviceName}:${port} re-registered due to received heartbeat.`);
   }
 }
 
 // Function to update service load
-function updateLoad(serviceName, load) {
-  if (!serviceLoad[serviceName]) {
-    serviceLoad[serviceName] = 0;
+function updateLoad(serviceName, port, load) {
+  if (!serviceLoad[`${serviceName}:${port}`]) {
+    serviceLoad[`${serviceName}:${port}`] = 0;
   }
-  serviceLoad[serviceName] = load;
-  console.log(`Service ${serviceName} load updated: ${load}`);
+  serviceLoad[`${serviceName}:${port}`] = load;
+  console.log(`Service ${serviceName}:${port} load updated: ${load}`);
 }
 
 // Function to check and raise an alert for critical load
-function checkCriticalLoad(serviceName) {
-  if (serviceLoad[serviceName] && serviceLoad[serviceName] > CRITICAL_LOAD_THRESHOLD) {
-    console.error(`Critical load alert: Service ${serviceName} is overloaded! Load: ${serviceLoad[serviceName]}`);
+function checkCriticalLoad(serviceName, port) {
+  if (serviceLoad[`${serviceName}:${port}`] && serviceLoad[`${serviceName}:${port}`] > CRITICAL_LOAD_THRESHOLD) {
+    console.error(`Critical load alert: Service ${serviceName}:${port} is overloaded! Load: ${serviceLoad[`${serviceName}:${port}`]}`);
   }
 }
 
 // Function to update service heartbeat
-function updateHeartbeat(serviceName) {
-  serviceHeartbeats[serviceName] = new Date();
-  console.log(`Heartbeat received for service ${serviceName}`);
+function updateHeartbeat(serviceName, port) {
+  if (!serviceHeartbeats[`${serviceName}:${port}`]) {
+    serviceHeartbeats[`${serviceName}:${port}`] = {};
+  }
+  serviceHeartbeats[`${serviceName}:${port}`] = new Date();
+  // console.log(serviceHeartbeats);
+  console.log(`Heartbeat received for service ${serviceName}:${port}`);
 }
 
 // Function to calculate the time since the last heartbeat for a service
-function getTimeSinceLastHeartbeat(serviceName) {
-  const lastHeartbeat = serviceHeartbeats[serviceName];
+function getTimeSinceLastHeartbeat(serviceInstance) {
+  console.log(serviceInstance);
+  const lastHeartbeat = serviceHeartbeats[serviceInstance];
   if (lastHeartbeat) {
     const currentTime = new Date();
     const timeDiff = currentTime - lastHeartbeat;
@@ -76,18 +88,20 @@ function getTimeSinceLastHeartbeat(serviceName) {
 }
 
 // Function to check if a service is active based on the time since the last heartbeat
-function isServiceActive(serviceName) {
-  const timeSinceLastHeartbeat = getTimeSinceLastHeartbeat(serviceName);
+function isServiceActive(serviceInstance) {
+  const timeSinceLastHeartbeat = getTimeSinceLastHeartbeat(serviceInstance);
   
-  if (timeSinceLastHeartbeat === null) {
-    console.log(`Service ${serviceName} has not sent a heartbeat.`);
-  } else {
-    console.log(`Time since last heartbeat for service ${serviceName}: ${timeSinceLastHeartbeat}ms`);
-  }
+  // if (timeSinceLastHeartbeat === null) {
+  //   console.log(`Service ${serviceInstance} has not sent a heartbeat.`);
+  // } else {
+  //   console.log(`Time since last heartbeat for service ${serviceInstance}: ${timeSinceLastHeartbeat}ms`);
+  // }
 
   if (timeSinceLastHeartbeat !== null && timeSinceLastHeartbeat <= HEARTBEAT_TIMEOUT) {
+    console.log(`Time since last heartbeat for service ${serviceInstance}: ${timeSinceLastHeartbeat}ms`);
     return true;
   } else {
+    console.log(`Service ${serviceInstance} has not sent a heartbeat.`);
     return false;
   }
 }
@@ -96,22 +110,20 @@ function isServiceActive(serviceName) {
 function checkServiceStatus() {
   setInterval(() => {
     const currentTime = new Date();
+    if(registeredServices){
+      for (const serviceInstance in registeredServices) {
+        const isActive = isServiceActive(serviceInstance);
+        if (!isActive) {
+          console.log(`Service ${serviceInstance} is inactive.`);
 
-    for (const serviceName in registeredServices) {
-      const isActive = isServiceActive(serviceName); // Check if the service is active based on heartbeat timeout
-      if (!isActive) {
-        console.log(`Service ${serviceName} is inactive.`);
-
-        deletedServices[serviceName] = registeredServices[serviceName];
-        deregister(serviceName)
-        // console.log(`Service ${serviceName} deregistered due to inactivity.`);
+          deletedServices[serviceInstance] = registeredServices[serviceInstance];
+          deregister(serviceInstance)
+          // console.log(`Service ${serviceInstance} deregistered due to inactivity.`);
+        }
       }
     }
-  }, HEARTBEAT_TIMEOUT); // Check service status every 10 seconds (adjust as needed)
+  }, HEARTBEAT_TIMEOUT);
 }
-
-// Start checking service status
-checkServiceStatus();
 
 // Service function for registration
 function RegisterService(call, callback) {
@@ -133,19 +145,37 @@ function DeregisterService(call, callback) {
 // Service function for status updates
 function UpdateServiceStatus(call, callback) {
   const request = call.request;
-  const serviceName = request.service_name;
-
-  updateLoad(serviceName, request.load);
-  checkCriticalLoad(serviceName);
+  // const serviceName = request.service_name;
+  // console.log(request.load);
+  updateLoad(request.service_name, request.port, request.load);
+  checkCriticalLoad(request.service_name, request.port);
   callback(null, {});
 }
 
 // Service function for heartbeat updates
 function UpdateServiceHeartbeat(call, callback) {
   const heartbeat = call.request;
-  updateHeartbeat(heartbeat.service_name);
-  reRegister(heartbeat.service_name);
+  updateHeartbeat(heartbeat.service_name, heartbeat.port);
+  reRegister(heartbeat.service_name, heartbeat.port);
   callback(null, {});
+}
+
+// Service function to send the list of registered services
+function ListRegisteredServices(call, callback) {
+  console.log(registeredServices);
+  const servicesList = Object.keys(registeredServices).map((name) => ({
+    name,
+    host: registeredServices[name].host,
+    port: registeredServices[name].port,
+    load: serviceLoad[name] || 0,
+  }));
+  
+  const response = {
+    services: servicesList,
+  };
+  console.log(response);
+  
+  callback(null, response);
 }
 
 const server = new grpc.Server();
@@ -155,9 +185,12 @@ server.addService(RegistrationService.service, {
   DeregisterService,
   UpdateServiceStatus,
   UpdateServiceHeartbeat,
+  ListRegisteredServices,
 });
 
-server.bindAsync('0.0.0.0:50053', grpc.ServerCredentials.createInsecure(), () => {
-  console.log('Registration server running at http://0.0.0.0:50053');
+server.bindAsync(`0.0.0.0:${PORT}`, grpc.ServerCredentials.createInsecure(), () => {
+  console.log(`Registration server running at http://0.0.0.0:${PORT}`);
   server.start();
 });
+
+checkServiceStatus();

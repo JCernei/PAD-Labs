@@ -8,7 +8,18 @@ from concurrent import futures
 from google.protobuf import empty_pb2
 import threading
 import time
+import os
+from dotenv import load_dotenv
+import sys
 
+load_dotenv()
+# RECORDS_SERVICE_PORT = None
+# print(RECORDS_SERVICE_PORT)
+SERVICE_DISCOVERY_URL = os.getenv("SERVICE_DISCOVERY_URL")
+print(SERVICE_DISCOVERY_URL)
+
+SERVICE_NAME = "records-service"
+SERVICE_HOST = "0.0.0.0"
 
 DATABASE = "records.db"
 
@@ -24,63 +35,76 @@ cursor.execute('''
 connection.commit()
 cursor.close
 
+load_counter = 1
 
-def register_service():
-    with grpc.insecure_channel('localhost:50053') as channel:
+def increase_load():
+    global load_counter
+    load_counter += 1
+
+def decrease_load():
+    global load_counter
+    load_counter -= 1
+
+def register_service(RECORDS_SERVICE_PORT):
+    with grpc.insecure_channel(SERVICE_DISCOVERY_URL) as channel:
         stub = RegistrationServiceStub(channel)
         registration_info = ServiceRegistration(
-            name="record-service",
-            host="0.0.0.0",
-            port=50051  # The port where your Python service listens
+            name=SERVICE_NAME,
+            host=SERVICE_HOST,
+            port=RECORDS_SERVICE_PORT  # The port where your Python service listens
         )
         stub.RegisterService(registration_info)
         print("Service registered with the Node.js gateway")
 
-def deregister_service():
-    with grpc.insecure_channel('localhost:50053') as channel:
+def deregister_service(RECORDS_SERVICE_PORT):
+    with grpc.insecure_channel(SERVICE_DISCOVERY_URL) as channel:
         stub = RegistrationServiceStub(channel)
         deregistration_request = DeregisterServiceRequest(
-            name="record-service",
-            host="0.0.0.0",
-            port=50051  # The port where your Python service listens
+            name=SERVICE_NAME,
+            host=SERVICE_HOST,
+            port=RECORDS_SERVICE_PORT  # The port where your Python service listens
         )
     stub.DeregisterService(deregistration_request)
 
     return empty_pb2.Empty()
 
-def update_service_status():
-    with grpc.insecure_channel('localhost:50053') as channel:
+def update_service_status(RECORDS_SERVICE_PORT):
+    global load_counter
+    with grpc.insecure_channel(SERVICE_DISCOVERY_URL) as channel:
         stub = RegistrationServiceStub(channel)
         status_request = SendServiceStatusRequest(
-            service_name="record-service",
-            load=75  # Modify this based on your actual status value
+            service_name=SERVICE_NAME,
+            port=RECORDS_SERVICE_PORT,
+            load=load_counter
         )
         stub.UpdateServiceStatus(status_request)
-        print("Service status updated")
+        print(f"Service status updated {load_counter}")
 
-def update_service_heartbeat():
-    with grpc.insecure_channel('localhost:50053') as channel:
+def update_service_heartbeat(RECORDS_SERVICE_PORT):
+    with grpc.insecure_channel(SERVICE_DISCOVERY_URL) as channel:
         stub = RegistrationServiceStub(channel)
         heartbeat = Heartbeat(
-            service_name="record-service"
+            service_name=SERVICE_NAME,
+            port=RECORDS_SERVICE_PORT
         )
         stub.UpdateServiceHeartbeat(heartbeat)
         print("Service heartbeat updated")
         
-def update_service_status_and_heartbeat_periodically():
+def update_service_status_and_heartbeat_periodically(RECORDS_SERVICE_PORT):
     while True:
         try:
-            update_service_status()
-            update_service_heartbeat()
+            update_service_status(RECORDS_SERVICE_PORT)
+            update_service_heartbeat(RECORDS_SERVICE_PORT)
             print("Service status and heartbeat sent")
         except Exception as e:
             print(f"Failed to send status and heartbeat: {e}")
 
         # Adjust the sleep interval (in seconds) as needed
-        time.sleep(10)  # Send status and heartbeat every 60 seconds
+        time.sleep(1)
 
 class RecordService(records_pb2_grpc.RecordServiceServicer):
     def CreateRecord(self, request, context):
+        increase_load()
         connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
 
@@ -100,9 +124,12 @@ class RecordService(records_pb2_grpc.RecordServiceServicer):
             name=request.name,
             medical_history=request.medical_history
         )
+
+        decrease_load()
         return record
 
     def GetRecordInfo(self, request, context):
+        increase_load()
         connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
         
@@ -122,13 +149,19 @@ class RecordService(records_pb2_grpc.RecordServiceServicer):
                 name=result[1],
                 medical_history=result[2]
             )
+            time.sleep(2)
+            decrease_load()
             return record
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details(f"Record with ID {request.record_id} not found.")
+
+            time.sleep(2)
+            decrease_load()
             return records_pb2.Record()
         
     def UpdateRecordInfo(self, request, context):
+        increase_load()
         connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
         print(request.record_id)
@@ -145,9 +178,11 @@ class RecordService(records_pb2_grpc.RecordServiceServicer):
             name='',  # Return an empty name as it was not updated
             medical_history=request.updated_medical_history
         )
+        decrease_load()
         return record
 
     def DeleteRecord(self, request, context):
+        increase_load()
         connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
 
@@ -158,10 +193,11 @@ class RecordService(records_pb2_grpc.RecordServiceServicer):
 
         connection.commit()
         cursor.close()
-
+        decrease_load()
         return empty_pb2.Empty()
 
     def ListRecords(self, request, context):
+        increase_load()
         connection = sqlite3.connect(DATABASE)
         cursor = connection.cursor()
 
@@ -174,24 +210,24 @@ class RecordService(records_pb2_grpc.RecordServiceServicer):
         ) for row in cursor.fetchall()]
 
         cursor.close()
-
+        decrease_load()
         return records_pb2.ListRecordsResponse(records=records)
 
-    def GetServiceStatus(self, request, context):
-        return records_pb2.ServiceStatus(is_healthy=True)
 
-def serve():
+def serve(RECORDS_SERVICE_PORT):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     records_pb2_grpc.add_RecordServiceServicer_to_server(RecordService(), server)
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port(f'[::]:{RECORDS_SERVICE_PORT}')
     server.start()
-    print("Server started on port 50051")
+    print(f"Server started on port {RECORDS_SERVICE_PORT}")
     server.wait_for_termination()
 
 if __name__ == '__main__':
-    register_service()
-    status_heartbeat_thread = threading.Thread(target=update_service_status_and_heartbeat_periodically)
+    RECORDS_SERVICE_PORT = int(sys.argv[1])
+
+    register_service(RECORDS_SERVICE_PORT)
+    status_heartbeat_thread = threading.Thread(target=update_service_status_and_heartbeat_periodically, args=(RECORDS_SERVICE_PORT,))
     status_heartbeat_thread.daemon = True
     status_heartbeat_thread.start()
 
-    serve()
+    serve(RECORDS_SERVICE_PORT)

@@ -18,11 +18,25 @@ message DeregisterServiceRequest {
 
 message SendServiceStatusRequest {
     string service_name = 1;
-    int32 load = 2;
+    int32 port = 2;
+    int32 load = 3;
 }
 
 message Heartbeat {
     string service_name = 1;
+    int32 port = 2;
+}
+
+
+message ServicesList {
+    repeated ServiceInfo services = 1;
+}
+
+message ServiceInfo {
+    string name = 1;
+    string host = 2;
+    int32 port = 3;
+    int32 load = 4;
 }
 
 service RegistrationService {
@@ -30,4 +44,5 @@ service RegistrationService {
     rpc DeregisterService(DeregisterServiceRequest) returns (google.protobuf.Empty);
     rpc UpdateServiceStatus(SendServiceStatusRequest) returns (google.protobuf.Empty);
     rpc UpdateServiceHeartbeat(Heartbeat) returns (google.protobuf.Empty);
+    rpc ListRegisteredServices (google.protobuf.Empty) returns (ServicesList);
 }

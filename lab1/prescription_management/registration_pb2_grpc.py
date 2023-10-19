@@ -35,6 +35,11 @@ class RegistrationServiceStub(object):
                 request_serializer=registration__pb2.Heartbeat.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.ListRegisteredServices = channel.unary_unary(
+                '/registration.RegistrationService/ListRegisteredServices',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=registration__pb2.ServicesList.FromString,
+                )
 
 
 class RegistrationServiceServicer(object):
@@ -64,6 +69,12 @@ class RegistrationServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListRegisteredServices(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_RegistrationServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -86,6 +97,11 @@ def add_RegistrationServiceServicer_to_server(servicer, server):
                     servicer.UpdateServiceHeartbeat,
                     request_deserializer=registration__pb2.Heartbeat.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'ListRegisteredServices': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListRegisteredServices,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=registration__pb2.ServicesList.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -162,5 +178,22 @@ class RegistrationService(object):
         return grpc.experimental.unary_unary(request, target, '/registration.RegistrationService/UpdateServiceHeartbeat',
             registration__pb2.Heartbeat.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListRegisteredServices(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/registration.RegistrationService/ListRegisteredServices',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            registration__pb2.ServicesList.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
