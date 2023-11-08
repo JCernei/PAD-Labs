@@ -2,13 +2,13 @@ services:
   gateway:
       networks:
         - mynetwork
-      # build: ./gateway/
-      image: jcernei/gateway:v1
+      build: ./gateway/
+      # image: jcernei/gateway:v1
       command: node gateway.js
       hostname: gateway.local
-      # volumes: 
-      #   - './gateway/:/app/'
-      #   - './protobufs/:/protobufs/'
+      volumes: 
+        - './gateway/:/app/'
+        - './protobufs/:/protobufs/'
       environment:
         - GATEWAY_PORT=80
         - SERVICE_DISCOVERY_HOSTNAME=servicediscovery.local
@@ -18,13 +18,13 @@ services:
   service-discovery:
     networks:
       - mynetwork
-    # build: ./gateway/
-    image: jcernei/service-discovery:v1
+    build: ./gateway/
+    # image: jcernei/service-discovery:v1
     command: node service-discovery.js
     hostname: servicediscovery.local
-    # volumes: 
-    #   - './gateway/:/app/'
-    #   - './protobufs/:/protobufs/'
+    volumes: 
+      - './gateway/:/app/'
+      - './protobufs/:/protobufs/'
     environment:
       - SERVICE_DISCOVERY_PORT=80
       - SERVICE_DISCOVERY_HOSTNAME=servicediscovery.local

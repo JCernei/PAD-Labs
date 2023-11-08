@@ -6,6 +6,6 @@ COPY package*.json ./
 
 RUN npm install
 
-COPY . .
+# COPY . .
 
-COPY protobufs /protobufs
+# COPY protobufs /protobufs
