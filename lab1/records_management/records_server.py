@@ -10,16 +10,18 @@ import threading
 import time
 import os
 from dotenv import load_dotenv
-import sys
 
 load_dotenv()
 # RECORDS_SERVICE_PORT = None
 # print(RECORDS_SERVICE_PORT)
-SERVICE_DISCOVERY_URL = os.getenv("SERVICE_DISCOVERY_URL")
-print(SERVICE_DISCOVERY_URL)
-
 SERVICE_NAME = "records-service"
-SERVICE_HOST = "0.0.0.0"
+SERVICE_HOSTNAME = os.getenv("RECORDS_SERVICE_HOSTNAME")
+RECORDS_SERVICE_PORT = os.getenv("RECORDS_SERVICE_PORT")
+
+SERVICE_DISCOVERY_HOSTNAME = os.getenv("SERVICE_DISCOVERY_HOSTNAME")
+SERVICE_DISCOVERY_PORT = os.getenv("SERVICE_DISCOVERY_PORT")
+SERVICE_DISCOVERY_URL = f"{SERVICE_DISCOVERY_HOSTNAME}:{SERVICE_DISCOVERY_PORT}"
+print(SERVICE_DISCOVERY_HOSTNAME)
 
 DATABASE = "records.db"
 
@@ -50,7 +52,7 @@ def register_service(RECORDS_SERVICE_PORT):
         stub = RegistrationServiceStub(channel)
         registration_info = ServiceRegistration(
             name=SERVICE_NAME,
-            host=SERVICE_HOST,
+            host=SERVICE_HOSTNAME,
             port=RECORDS_SERVICE_PORT  # The port where your Python service listens
         )
         stub.RegisterService(registration_info)
@@ -61,7 +63,7 @@ def deregister_service(RECORDS_SERVICE_PORT):
         stub = RegistrationServiceStub(channel)
         deregistration_request = DeregisterServiceRequest(
             name=SERVICE_NAME,
-            host=SERVICE_HOST,
+            host=SERVICE_HOSTNAME,
             port=RECORDS_SERVICE_PORT  # The port where your Python service listens
         )
     stub.DeregisterService(deregistration_request)
@@ -227,11 +229,10 @@ def serve(RECORDS_SERVICE_PORT):
     server.wait_for_termination()
 
 if __name__ == '__main__':
-    RECORDS_SERVICE_PORT = int(sys.argv[1])
-
+    # RECORDS_SERVICE_PORT = int(sys.argv[1])
+    RECORDS_SERVICE_PORT = 50051
     register_service(RECORDS_SERVICE_PORT)
     status_heartbeat_thread = threading.Thread(target=update_service_status_and_heartbeat_periodically, args=(RECORDS_SERVICE_PORT,))
     status_heartbeat_thread.daemon = True
     status_heartbeat_thread.start()
-
     serve(RECORDS_SERVICE_PORT)

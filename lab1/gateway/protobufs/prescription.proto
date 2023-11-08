@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package prescription;
+
+import "google/protobuf/empty.proto";
+
+message Prescription {
+    string id = 1;
+    string medication = 2;
+    // Add more fields as needed
+}
+
+message CreatePrescriptionRequest {
+    string prescription_id = 1;
+    string medication = 2;
+    // Add more fields as needed
+}
+
+message GetPrescriptionRequest {
+    string prescription_id = 1;
+}
+
+message UpdatePrescriptionRequest {
+    string prescription_id = 1;
+    string updated_medication = 2;
+    // Add more fields as needed
+}
+
+message DeletePrescriptionRequest {
+    string prescription_id = 1;
+}
+
+message ServiceStatus {
+    bool is_healthy = 1;
+}
+
+message SendPrescriptionByEmailRequest {
+    string prescription_id = 1;
+    string email = 2;
+}
+
+service PrescriptionService {
+    rpc CreatePrescription (CreatePrescriptionRequest) returns (Prescription);
+    rpc GetPrescription (GetPrescriptionRequest) returns (Prescription);
+    rpc UpdatePrescription (UpdatePrescriptionRequest) returns (Prescription);
+    rpc DeletePrescription (DeletePrescriptionRequest) returns (google.protobuf.Empty);
+    rpc SendPrescriptionByEmail (SendPrescriptionByEmailRequest) returns (google.protobuf.Empty);
+    rpc GetServiceStatus (google.protobuf.Empty) returns (ServiceStatus);
+}

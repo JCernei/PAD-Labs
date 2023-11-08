@@ -9,9 +9,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 const PORT = process.env.GATEWAY_PORT;
-const SERVICE_DISCOVERY_URL = process.env.SERVICE_DISCOVERY_URL;
-const RECORDS_SERVICE_URL = process.env.RECORDS_SERVICE_URL;
-const PRESCRIPTION_SERVICE_URL = process.env.PRESCRIPTION_SERVICE_URL;
+
+const SERVICE_DISCOVERY_HOSTNAME = process.env.SERVICE_DISCOVERY_HOSTNAME;
+const SERVICE_DISCOVERY_PORT = process.env.SERVICE_DISCOVERY_PORT;
+const SERVICE_DISCOVERY_URL = `${SERVICE_DISCOVERY_HOSTNAME}:${SERVICE_DISCOVERY_PORT}`;
 
 const limit = pLimit(7); // Limit concurrency to 7 tasks
 const cache = new NodeCache({ stdTTL: 300 }); // Cache data for 5 minutes
@@ -72,7 +73,6 @@ function selectService(services, serviceType) {
   for (const service of services) {
     
     if (errorCounts[service.name] >= MAX_ERROR_NUMBER) {
-      discoveryClient.DeRegister()
       continue; 
     }
 
@@ -150,6 +150,8 @@ app.get('/records/:record_id', (req, res) => {
           grpcRequestWithTimeout(client, 'GetRecordInfo', { record_id }, timeoutMilliseconds)
         ))
           .then((response) => {
+            console.log(`Active tasks: ${limit.activeCount}`);
+            console.log(`Pending tasks: ${limit.pendingCount}`);
             res.json(response);
           })
           .catch((error) => handleRequestError(res, error, selectedService, timeoutMilliseconds));

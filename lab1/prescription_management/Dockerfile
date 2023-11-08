@@ -6,12 +6,6 @@ COPY requirements.txt ./
 
 RUN pip install -r requirements.txt
 
-# # Copy all source code to the working directory
-# COPY . .
+COPY . .
 
-# ARG RECORDS_SERVICE_PORT=50051
-
-# EXPOSE ${RECORDS_SERVICE_PORT}
-
-# # Start your Python service (replace with the actual service file name)
-# CMD ["python3", "records_server.py"]
+CMD [ "python3", "prescription_server.py" ]

@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package records;
+
+import "google/protobuf/empty.proto";
+
+message Record {
+    string id = 1;
+    string name = 2;
+    string medical_history = 3;
+}
+
+message CreateRecordRequest {
+    string name = 1;
+    string medical_history = 2;
+}
+
+message GetRecordInfoRequest {
+    string record_id = 1;
+}
+
+message UpdateRecordInfoRequest {
+    string record_id = 1;
+    string updated_medical_history = 2;
+}
+
+message DeleteRecordRequest {
+    string record_id = 1;
+}
+
+message ListRecordsRequest {
+    // You can include filtering or pagination parameters here if needed
+}
+
+message ListRecordsResponse {
+    repeated Record records = 1;
+    // Add other response fields if necessary
+}
+
+message ServiceStatus {
+    bool is_healthy = 1;
+}
+
+
+service RecordService {
+    rpc CreateRecord (CreateRecordRequest) returns (Record);
+    rpc GetRecordInfo (GetRecordInfoRequest) returns (Record);
+    rpc UpdateRecordInfo (UpdateRecordInfoRequest) returns (Record);
+    rpc DeleteRecord (DeleteRecordRequest) returns (google.protobuf.Empty);
+    rpc ListRecords (ListRecordsRequest) returns (ListRecordsResponse); // New list endpoint
+    rpc GetServiceStatus (google.protobuf.Empty) returns (ServiceStatus); // New status endpoint
+}

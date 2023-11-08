@@ -1,49 +1,74 @@
 services:
   gateway:
-    networks:
-      - mynetwork
-    build: ./gateway/
-    command: node gateway.js
-    volumes: 
-      - './gateway/:/app/'
-      - './protobufs/:/protobufs/'
-    environment:
-      - GATEWAY_PORT=80
-      - SERVICE_DISCOVERY_URL='service-discovery.local:80'
-      - RECORDS_SERVICE_URL='records-management'
-      - PRESCRIPTION_SERVICE_URL='prescription-management'
-    ports:
-      - "8080:80"
+      networks:
+        - mynetwork
+      # build: ./gateway/
+      image: jcernei/gateway:v1
+      command: node gateway.js
+      hostname: gateway.local
+      # volumes: 
+      #   - './gateway/:/app/'
+      #   - './protobufs/:/protobufs/'
+      environment:
+        - GATEWAY_PORT=80
+        - SERVICE_DISCOVERY_HOSTNAME=servicediscovery.local
+        - SERVICE_DISCOVERY_PORT=80
+      ports:
+        - "8080:80"
   service-discovery:
     networks:
       - mynetwork
-    build: ./gateway/
+    # build: ./gateway/
+    image: jcernei/service-discovery:v1
     command: node service-discovery.js
     hostname: servicediscovery.local
-    volumes: 
-      - './gateway/:/app/'
-      - './protobufs/:/protobufs/'
+    # volumes: 
+    #   - './gateway/:/app/'
+    #   - './protobufs/:/protobufs/'
     environment:
       - SERVICE_DISCOVERY_PORT=80
-    depends_on:
-      - gateway
+      - SERVICE_DISCOVERY_HOSTNAME=servicediscovery.local
     ports:
     - "8081:80"
   records-management:
     networks:
       - mynetwork
-    build: ./records_management/
+    # build: ./records_management/
+    image: jcernei/records-management:v1
     command: python3 records_server.py
-    volumes: 
-      - './records_management/:/app/'
+    hostname: recordsmanagement.local
+    # volumes: 
+    #   - './records_management/:/app/'
     environment:
-      - GRPC_DNS_RESOLVER=native 
       - RECORDS_SERVICE_PORT=80
-      - SERVICE_DISCOVERY_URL='servicediscovery.local:80/'
+      - RECORDS_SERVICE_HOSTNAME=recordsmanagement.local
+      - SERVICE_DISCOVERY_HOSTNAME=servicediscovery.local
+      - SERVICE_DISCOVERY_PORT=80
     depends_on:
       - gateway
       - service-discovery
     ports:
       - "50051:80"
+  
+  prescription-management:
+    networks:
+      - mynetwork
+    # build: ./prescription_management/
+    image: jcernei/prescription-management:v1
+    command: python3 prescription_server.py
+    hostname: prescriptionmanagement.local
+    # volumes: 
+    #   - './prescription_management/:/app/'
+    environment:
+      - PRESCRIPTION_SERVICE_PORT=80
+      - PRESCRIPTION_SERVICE_HOSTNAME=prescriptionmanagement.local
+      - SERVICE_DISCOVERY_HOSTNAME=servicediscovery.local
+      - SERVICE_DISCOVERY_PORT=80
+    depends_on:
+      - gateway
+      - service-discovery
+    ports:
+      - "50052:80"
+
 networks:
   mynetwork:

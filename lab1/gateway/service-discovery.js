@@ -2,10 +2,12 @@ import path from 'path';
 import grpc from '@grpc/grpc-js';
 import { loadSync } from '@grpc/proto-loader';
 import dotenv from 'dotenv';
+import { hostname } from 'os';
 
 dotenv.config();
 const PORT = parseInt(process.env.SERVICE_DISCOVERY_PORT);
-
+const HOSTNAME = process.env.SERVICE_DISCOVERY_HOSTNAME;
+console.log(`Service discovery server running at http://${HOSTNAME}:${PORT}`);
 
 const __filename = new URL(import.meta.url).pathname;
 const protoDir = path.dirname(__filename);
@@ -188,8 +190,8 @@ server.addService(RegistrationService.service, {
   ListRegisteredServices,
 });
 
-server.bindAsync(`0.0.0.0:${PORT}`, grpc.ServerCredentials.createInsecure(), () => {
-  console.log(`Registration server running at http://0.0.0.0:${PORT}`);
+server.bindAsync(`${HOSTNAME}:${PORT}`, grpc.ServerCredentials.createInsecure(), () => {
+  console.log(`Registration server running at http://${HOSTNAME}:${PORT}`);
   server.start();
 });
 
