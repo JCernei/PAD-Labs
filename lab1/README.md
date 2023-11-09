@@ -16,7 +16,7 @@ Microsoft Azure: Azure offers a variety of microservices-based healthcare soluti
 - Patient Records Service: Manages patient health records, including medical history, diagnoses, and treatment plans. 
 - Prescription Management Service: This microservice is responsible for managing prescriptions and send prescription to mail.
 
-![diagram](./images/lab1PAD.drawio.png "architecture")
+![diagram](./images/lab2PAD.drawio.png "architecture")
 
 ## Technology stack
 I have chosen to use Python for the microservices and Node.js for the API gateway. Python is a popular language for microservices because it is easy to learn, has a large and active community, and has a rich ecosystem of libraries and frameworks. JavaScript is a good choice for the API gateway because it is fast and lightweight, and it is well-suited for building web-based applications.
