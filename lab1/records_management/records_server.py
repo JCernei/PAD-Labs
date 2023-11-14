@@ -10,13 +10,18 @@ import threading
 import time
 import os
 from dotenv import load_dotenv
+from py_grpc_prometheus.prometheus_server_interceptor import PromServerInterceptor
+from prometheus_client import start_http_server
 
 load_dotenv()
-# RECORDS_SERVICE_PORT = None
-# print(RECORDS_SERVICE_PORT)
+PROMETHEUS_PORT = int(os.getenv("PROMETHEUS_PORT"))
+PROMETHEUS_HOSTNAME = os.getenv("PROMETHEUS_HOSTNAME")
+print(PROMETHEUS_HOSTNAME)
+print(PROMETHEUS_PORT)
+
 SERVICE_NAME = "records-service"
 SERVICE_HOSTNAME = os.getenv("RECORDS_SERVICE_HOSTNAME")
-RECORDS_SERVICE_PORT = os.getenv("RECORDS_SERVICE_PORT")
+RECORDS_SERVICE_PORT = int(os.getenv("RECORDS_SERVICE_PORT"))
 
 SERVICE_DISCOVERY_HOSTNAME = os.getenv("SERVICE_DISCOVERY_HOSTNAME")
 SERVICE_DISCOVERY_PORT = os.getenv("SERVICE_DISCOVERY_PORT")
@@ -221,18 +226,22 @@ class RecordService(records_pb2_grpc.RecordServiceServicer):
 
 
 def serve(RECORDS_SERVICE_PORT):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10), interceptors=(PromServerInterceptor(),))
     records_pb2_grpc.add_RecordServiceServicer_to_server(RecordService(), server)
     server.add_insecure_port(f'[::]:{RECORDS_SERVICE_PORT}')
     server.start()
     print(f"Server started on port {RECORDS_SERVICE_PORT}")
+    start_http_server(PROMETHEUS_PORT, SERVICE_HOSTNAME)
+    print(f"Prometheus started on port {PROMETHEUS_PORT}, hostname {SERVICE_HOSTNAME}")
     server.wait_for_termination()
 
 if __name__ == '__main__':
     # RECORDS_SERVICE_PORT = int(sys.argv[1])
-    RECORDS_SERVICE_PORT = 50051
+    # RECORDS_SERVICE_PORT = 50051
     register_service(RECORDS_SERVICE_PORT)
     status_heartbeat_thread = threading.Thread(target=update_service_status_and_heartbeat_periodically, args=(RECORDS_SERVICE_PORT,))
     status_heartbeat_thread.daemon = True
     status_heartbeat_thread.start()
+    
     serve(RECORDS_SERVICE_PORT)
+    

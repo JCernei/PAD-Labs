@@ -11,14 +11,21 @@ import threading
 import time
 import os
 from dotenv import load_dotenv
-import sys
+from py_grpc_prometheus.prometheus_server_interceptor import PromServerInterceptor
+from prometheus_client import start_http_server
 
 load_dotenv()
-# PRESCRIPTION_SERVICE_PORT = int(os.getenv("PRESCRIPTION_SERVICE_PORT"))
-SERVICE_DISCOVERY_URL = os.getenv("SERVICE_DISCOVERY_URL")
+
+PROMETHEUS_PORT = int(os.getenv("PROMETHEUS_PORT"))
 
 SERVICE_NAME = "prescriptions-service"
-SERVICE_HOST = "0.0.0.0"
+SERVICE_HOSTNAME = os.getenv("PRESCRIPTION_SERVICE_HOSTNAME")
+PRESCRIPTION_SERVICE_PORT = int(os.getenv("PRESCRIPTION_SERVICE_PORT"))
+
+SERVICE_DISCOVERY_HOSTNAME = os.getenv("SERVICE_DISCOVERY_HOSTNAME")
+SERVICE_DISCOVERY_PORT = os.getenv("SERVICE_DISCOVERY_PORT")
+SERVICE_DISCOVERY_URL = f"{SERVICE_DISCOVERY_HOSTNAME}:{SERVICE_DISCOVERY_PORT}"
+print(SERVICE_DISCOVERY_HOSTNAME)
 
 DATABASE = "prescriptions.db"
 
@@ -48,7 +55,7 @@ def register_service(PRESCRIPTION_SERVICE_PORT):
         stub = RegistrationServiceStub(channel)
         registration_info = ServiceRegistration(
             name=SERVICE_NAME,
-            host=SERVICE_HOST,
+            host=SERVICE_HOSTNAME,
             port=PRESCRIPTION_SERVICE_PORT  # The port where your Python service listens
         )
         stub.RegisterService(registration_info)
@@ -59,7 +66,7 @@ def deregister_service(PRESCRIPTION_SERVICE_PORT):
         stub = RegistrationServiceStub(channel)
         deregistration_request = DeregisterServiceRequest(
             name=SERVICE_NAME,
-            host=SERVICE_HOST,
+            host=SERVICE_HOSTNAME,
             port=PRESCRIPTION_SERVICE_PORT  # The port where your Python service listens
         )
     stub.DeregisterService(deregistration_request)
@@ -198,16 +205,16 @@ class PrescriptionServicer(prescription_pb2_grpc.PrescriptionServiceServicer):
         return prescription_pb2.ServiceStatus(is_healthy=True)
 
 def serve(PRESCRIPTION_SERVICE_PORT):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10), interceptors=(PromServerInterceptor(),))
     prescription_pb2_grpc.add_PrescriptionServiceServicer_to_server(PrescriptionServicer(), server)
     server.add_insecure_port(f'[::]:{PRESCRIPTION_SERVICE_PORT}')
     server.start()
     print(f"Server started on port {PRESCRIPTION_SERVICE_PORT}")
+    start_http_server(PROMETHEUS_PORT, SERVICE_HOSTNAME)
+    print(f"Prometheus started on port {PROMETHEUS_PORT}")
     server.wait_for_termination()
 
 if __name__ == '__main__':
-    PRESCRIPTION_SERVICE_PORT = int(sys.argv[1])
-
     register_service(PRESCRIPTION_SERVICE_PORT)
     status_heartbeat_thread = threading.Thread(target=update_service_status_and_heartbeat_periodically, args=(PRESCRIPTION_SERVICE_PORT,))
     status_heartbeat_thread.daemon = True

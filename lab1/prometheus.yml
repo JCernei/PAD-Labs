@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 5s # when Prometheus is pulling data from exporters etc
+  evaluation_interval: 30s # time between each evaluation of Prometheus' alerting rules
+
+scrape_configs:
+  - job_name: 'records-management'
+    static_configs:
+      - targets: 
+        - recordsmanagement.local:8000  # Replace with the actual host and port
+  - job_name: 'prescription-management'
+    static_configs:
+      - targets: 
+        - prescriptionmanagement.local:8000  # Replace with the actual host and port
