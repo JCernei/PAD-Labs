@@ -83,7 +83,7 @@ def update_service_status(PRESCRIPTION_SERVICE_PORT):
             load=load_counter
         )
         stub.UpdateServiceStatus(status_request)
-        print(f"Service status updated {load_counter}")
+        # print(f"Service status updated {load_counter}")
 
 def update_service_heartbeat(PRESCRIPTION_SERVICE_PORT):
     with grpc.insecure_channel(SERVICE_DISCOVERY_URL) as channel:
@@ -93,14 +93,14 @@ def update_service_heartbeat(PRESCRIPTION_SERVICE_PORT):
             port=PRESCRIPTION_SERVICE_PORT
         )
         stub.UpdateServiceHeartbeat(heartbeat)
-        print("Service heartbeat updated")
+        # print("Service heartbeat updated")
         
 def update_service_status_and_heartbeat_periodically(PRESCRIPTION_SERVICE_PORT):
     while True:
         try:
             update_service_status(PRESCRIPTION_SERVICE_PORT)
             update_service_heartbeat(PRESCRIPTION_SERVICE_PORT)
-            print("Service status and heartbeat sent")
+            # print("Service status and heartbeat sent")
         except Exception as e:
             print(f"Failed to send status and heartbeat: {e}")
 

@@ -56,7 +56,7 @@ function updateLoad(serviceName, port, load) {
     serviceLoad[`${serviceName}:${port}`] = 0;
   }
   serviceLoad[`${serviceName}:${port}`] = load;
-  console.log(`Service ${serviceName}:${port} load updated: ${load}`);
+  // console.log(`Service ${serviceName}:${port} load updated: ${load}`);
 }
 
 // Function to check and raise an alert for critical load
@@ -73,12 +73,12 @@ function updateHeartbeat(serviceName, port) {
   }
   serviceHeartbeats[`${serviceName}:${port}`] = new Date();
   // console.log(serviceHeartbeats);
-  console.log(`Heartbeat received for service ${serviceName}:${port}`);
+  // console.log(`Heartbeat received for service ${serviceName}:${port}`);
 }
 
 // Function to calculate the time since the last heartbeat for a service
 function getTimeSinceLastHeartbeat(serviceInstance) {
-  console.log(serviceInstance);
+  // console.log(serviceInstance);
   const lastHeartbeat = serviceHeartbeats[serviceInstance];
   if (lastHeartbeat) {
     const currentTime = new Date();
@@ -100,7 +100,7 @@ function isServiceActive(serviceInstance) {
   // }
 
   if (timeSinceLastHeartbeat !== null && timeSinceLastHeartbeat <= HEARTBEAT_TIMEOUT) {
-    console.log(`Time since last heartbeat for service ${serviceInstance}: ${timeSinceLastHeartbeat}ms`);
+    // console.log(`Time since last heartbeat for service ${serviceInstance}: ${timeSinceLastHeartbeat}ms`);
     return true;
   } else {
     console.log(`Service ${serviceInstance} has not sent a heartbeat.`);

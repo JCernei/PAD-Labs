@@ -6,6 +6,8 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import NodeCache from 'node-cache';
 import dotenv from 'dotenv';
+import Memcached from 'memcached';
+import HashRing from 'hashring';
 
 dotenv.config();
 const PORT = process.env.GATEWAY_PORT;
@@ -15,9 +17,77 @@ const SERVICE_DISCOVERY_PORT = process.env.SERVICE_DISCOVERY_PORT;
 const SERVICE_DISCOVERY_URL = `${SERVICE_DISCOVERY_HOSTNAME}:${SERVICE_DISCOVERY_PORT}`;
 
 const limit = pLimit(7); // Limit concurrency to 7 tasks
-const cache = new NodeCache({ stdTTL: 300 }); // Cache data for 5 minutes
+// const cache = new NodeCache({ stdTTL: 300 }); // Cache data for 5 minutes
 const MAX_ERROR_NUMBER = 3; // Maximum allowed errors before removing a service
 const errorCounts = {}; // Object to track error counts for each service
+
+const MEMCACHED_PORT = process.env.MEMCACHED_PORT;
+const MEMCACHED_HOSTNAMES = process.env.MEMCACHED_HOSTNAMES.split(',');
+
+const memcachedServers = MEMCACHED_HOSTNAMES.map((host) => `${host}:${MEMCACHED_PORT}`);
+// const memcachedServers = ['memcached1.local:11211', 'memcached2.local:11211', 'memcached3.local:11211'];
+// console.log(`Memcached servers: ${memcachedServers}`);
+
+// Create a hash ring for consistent hashing
+const hashRing = new HashRing(memcachedServers);
+
+// Function to get the Memcached server for a key
+function getMemcachedServerForKey(key) {
+  return hashRing.get(key);
+}
+
+// Function to create a Memcached client for a specific server
+function createMemcachedClient(server) {
+  console.log(`Creating Memcached client for server: ${server}`);
+  return new Memcached(server);
+}
+
+// Function to set data in the cache with consistent hashing
+function setInCacheWithConsistentHashing(key, value, ttlInSeconds) {
+  const memcachedServer = getMemcachedServerForKey(key);
+  const memcachedClient = createMemcachedClient(memcachedServer);
+
+  memcachedClient.set(key, value, ttlInSeconds, (err) => {
+    if (err) {
+      console.error(`Error setting data in cache on server ${memcachedServer}:`, err);
+    } else {
+      console.log(`Data set successfully in cache on server ${memcachedServer} for key: ${key}`);
+    }
+  });
+}
+
+// Function to get data from the cache with consistent hashing
+function getFromCacheWithConsistentHashing(key, callback) {
+  const memcachedServer = getMemcachedServerForKey(key);
+  const memcachedClient = createMemcachedClient(memcachedServer);
+
+  memcachedClient.get(key, (err, data) => {
+    if (err) {
+      console.error(`Error getting data from cache on server ${memcachedServer}:`, err);
+      callback(err, null);
+    } else if (data === undefined || data === null) {
+      console.log(`Data not found in cache on server ${memcachedServer} for key: ${key}`);
+      callback(null, null);
+    } else {
+      console.log(`Data retrieved successfully from cache on server ${memcachedServer} for key: ${key}`);
+      callback(null, data);
+    }
+  });
+}
+
+// Function to delete data from the cache with consistent hashing
+function deleteFromCacheWithConsistentHashing(key) {
+  const memcachedServer = getMemcachedServerForKey(key);
+  const memcachedClient = createMemcachedClient(memcachedServer);
+
+  memcachedClient.del(key, (err) => {
+    if (err) {
+      console.error(`Error deleting data from cache on server ${memcachedServer} for key: ${key}`, err);
+    } else {
+      console.log(`Data deleted successfully from cache on server ${memcachedServer} for key: ${key}`);
+    }
+  });
+}
 
 const app = express();
 app.use(bodyParser.json());
@@ -42,12 +112,10 @@ function createGRPCClient(service, host, credentials) {
   return new service(host, credentials);
 }
 
-
-function invalidateCache(key, id) {
-  const cacheKey = `${key}:${id}`;
-  cache.del(cacheKey);
-}
-
+// function invalidateCache(key, id) {
+//   const cacheKey = `${key}:${id}`;
+//   cache.del(cacheKey);
+// }
 
 const discoveryClient = createGRPCClient(RegistrationService, SERVICE_DISCOVERY_URL, grpc.credentials.createInsecure());
 
@@ -101,16 +169,33 @@ function grpcRequestWithTimeout(client, method, request, timeoutMilliseconds) {
   });
 }
 
-function getFromCacheOrFetch(cache, cacheKey, fetchFunction) {
-  const cachedResponse = cache.get(cacheKey);
-  if (cachedResponse) {
-    console.log(`Cache hit for ${cacheKey}`);
-    return Promise.resolve(cachedResponse);
-  }
+// function getFromCacheOrFetch(cache, cacheKey, fetchFunction) {
+//   const cachedResponse = cache.get(cacheKey);
+//   if (cachedResponse) {
+//     console.log(`Cache hit for ${cacheKey}`);
+//     return Promise.resolve(cachedResponse);
+//   }
 
-  return fetchFunction().then((response) => {
-    cache.set(cacheKey, response);
-    return response;
+//   return fetchFunction().then((response) => {
+//     cache.set(cacheKey, response);
+//     return response;
+//   });
+// }
+
+function getFromCacheOrFetchWithConsistentHashing(cacheKey, fetchFunction) {
+  return new Promise((resolve, reject) => {
+    getFromCacheWithConsistentHashing(cacheKey, (err, cachedResponse) => {
+      if (cachedResponse) {
+        resolve(cachedResponse);
+      } else {
+        fetchFunction()
+          .then((response) => {
+            setInCacheWithConsistentHashing(cacheKey, response, 300); // Cache for 5 minutes
+            resolve(response);
+          })
+          .catch((error) => reject(error));
+      }
+    });
   });
 }
 
@@ -146,7 +231,7 @@ app.get('/records/:record_id', (req, res) => {
         const timeoutMilliseconds = 5000;
         const cacheKey = `getRecordInfo:${record_id}`;
 
-        limit(() => getFromCacheOrFetch(cache, cacheKey, () =>
+        limit(() => getFromCacheOrFetchWithConsistentHashing(cacheKey, () =>
           grpcRequestWithTimeout(client, 'GetRecordInfo', { record_id }, timeoutMilliseconds)
         ))
           .then((response) => {
@@ -179,7 +264,7 @@ app.get('/records', (req, res) => {
         console.log(`Active tasks: ${limit.activeCount}`);
         console.log(`Pending tasks: ${limit.pendingCount}`);
 
-        limit(() => getFromCacheOrFetch(cache, 'listRecords', () =>
+        limit(() => getFromCacheOrFetchWithConsistentHashing('listRecords', () =>
           grpcRequestWithTimeout(client, 'ListRecords', {}, timeoutMilliseconds)
         ))
           .then((response) => res.json(response))
@@ -212,7 +297,7 @@ app.post('/records', (req, res) => {
         limit(() => grpcRequestWithTimeout(client, 'CreateRecord', { name, medical_history }, timeoutMilliseconds))
         .then((response) => {
           // Invalidate the cache for listRecords
-          cache.del('listRecords');
+          deleteFromCacheWithConsistentHashing('listRecords');
           res.json(response);
         })
           .catch((error) => handleRequestError(res, error, selectedService, timeoutMilliseconds));
@@ -246,7 +331,7 @@ app.put('/records/:record_id', (req, res) => {
 
         limit(() => grpcRequestWithTimeout(client, 'UpdateRecordInfo', request, timeoutMilliseconds))
         .then((response) => {
-          invalidateCache('getRecordInfo', record_id);
+          deleteFromCacheWithConsistentHashing(`getRecordInfo:${record_id}`);
           res.json(response);
         })
           .catch((error) => handleRequestError(res, error, selectedService, timeoutMilliseconds));
@@ -280,7 +365,7 @@ app.delete('/records/:record_id', (req, res) => {
         limit(() => grpcRequestWithTimeout(client, 'DeleteRecord', request, timeoutMilliseconds))
           .then(() => {
             console.log(`Successfully deleted record with ID: ${record_id}`);
-            invalidateCache('getRecordInfo', record_id);
+            deleteFromCacheWithConsistentHashing(`getRecordInfo:${record_id}`);
             res.json(`Successfully deleted record with ID: ${record_id}`);
           })
           .catch((error) => handleRequestError(res, error, selectedService, timeoutMilliseconds));
@@ -338,7 +423,7 @@ app.get('/prescriptions/:prescription_id', (req, res) => {
         console.log(`Active tasks: ${limit.activeCount}`);
         console.log(`Pending tasks: ${limit.pendingCount}`);
 
-        limit(() => getFromCacheOrFetch(cache, cacheKey, () =>
+        limit(() => getFromCacheOrFetchWithConsistentHashing(cacheKey, () =>
           grpcRequestWithTimeout(client, 'GetPrescription', request, timeoutMilliseconds)
         ))
           .then((response) => res.json(response))
@@ -371,7 +456,7 @@ app.put('/prescriptions/:prescription_id', (req, res) => {
 
         limit(() => grpcRequestWithTimeout(client, 'UpdatePrescription', request, timeoutMilliseconds))
         .then((response) => {
-          invalidateCache('getPrescription', prescription_id);
+          deleteFromCacheWithConsistentHashing(`getPrescription:${prescription_id}`);
           res.json(response);
         })
           .catch((error) => handleRequestError(res, error, selectedService, timeoutMilliseconds));
@@ -403,7 +488,7 @@ app.delete('/prescriptions/:prescription_id', (req, res) => {
         limit(() => grpcRequestWithTimeout(client, 'DeletePrescription', request, timeoutMilliseconds))
           .then(() => {
             console.log(`Successfully deleted prescription with ID: ${prescription_id}`);
-            invalidateCache('getPrescription', prescription_id);
+            deleteFromCacheWithConsistentHashing(`getPrescription:${prescription_id}`);
             res.json(`Successfully deleted prescription with ID: ${prescription_id}`);
           })
           .catch((error) => handleRequestError(res, error, selectedService, timeoutMilliseconds));

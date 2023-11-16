@@ -1,38 +1,62 @@
 services:
+  memcached1:
+    networks:
+      - mynetwork
+    image: bitnami/memcached:latest
+    hostname: memcached1.local
+  
+  memcached2:
+    networks:
+      - mynetwork
+    image: bitnami/memcached:latest
+    hostname: memcached2.local
+  
+  memcached3:
+    networks:
+      - mynetwork
+    image: bitnami/memcached:latest
+    hostname: memcached3.local
+  
   prometheus:
     networks:
-        - mynetwork
+      - mynetwork
     image: prom/prometheus
     hostname: prometheus.local
     ports:
       - "9090:9090"
     volumes:
-        - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
 
   grafana:
     networks:
-        - mynetwork
+      - mynetwork
     hostname: grafana
     image: grafana/grafana
     ports:
       - 3000:3000
 
   gateway:
-      networks:
-        - mynetwork
-      build: ./gateway/
-      # image: jcernei/gateway:v1
-      command: node gateway.js
-      hostname: gateway.local
-      volumes: 
-        - './gateway/:/app/'
-        - './protobufs/:/protobufs/'
-      environment:
-        - GATEWAY_PORT=80
-        - SERVICE_DISCOVERY_HOSTNAME=servicediscovery.local
-        - SERVICE_DISCOVERY_PORT=80
-      ports:
-        - "8080:80"
+    networks:
+      - mynetwork
+    build: ./gateway/
+    # image: jcernei/gateway:v1
+    command: node gateway.js
+    hostname: gateway.local
+    volumes: 
+      - './gateway/:/app/'
+      - './protobufs/:/protobufs/'
+    environment:
+      - GATEWAY_PORT=80
+      - SERVICE_DISCOVERY_HOSTNAME=servicediscovery.local
+      - SERVICE_DISCOVERY_PORT=80
+      - MEMCACHED_PORT=11211
+      - MEMCACHED_HOSTNAMES=memcached1.local,memcached2.local,memcached3.local
+    depends_on:
+      - memcached1
+      - memcached2
+      - memcached3
+    ports:
+      - "8080:80"
 
   service-discovery:
     networks:
@@ -71,9 +95,7 @@ services:
     ports:
       - "50051:80"
       - "8000:8000"
-    # expose:
-    #   - 8000
-  
+      
   prescription-management:
     networks:
       - mynetwork
